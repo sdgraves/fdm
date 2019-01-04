@@ -138,7 +138,7 @@ int main( int argc, char **argv )
     sprintf(c, "%d", fd);
     sprintf(d, "%u", p.size() );
           
-    const char* args[] = {"python3", "numerical.py", c, d, (char*)NULL};
+    const char* args[] = {"python3", "plotting.py", c, d, (char*)NULL};
     execve ("/usr/bin/python3", const_cast<char**>(args), environ);
     
     printf("exiting with %d: %s\n", errno, strerror(errno));     
