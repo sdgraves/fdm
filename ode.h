@@ -33,8 +33,16 @@ public:
     inline int offset(){ return t0; }
 };
     
+/******************************************************************************/
+typedef struct rational{
+  std::vector<double> num;
+  std::vector<double> den;
+} rational;
 
-
+typedef struct ivp{
+    double x;
+    double v;
+} ivp;
 
 
 
@@ -47,8 +55,8 @@ public:
 
 //The primary motivation for using a template is to save memory when using
 //floats over complex doubles, but should work fine for MIMO systems as long as
-//the template T can perform multiplication, division, addition, and scalar
-//multiplication.
+//the template T as long as {T} is a field and { T x C } with C the complex numbers
+//is a vector space.
 
 //The subscript operator is not guaranteed to fetch the time history of the system
 //for subscripts not used by the difference equation, and returns by value.
@@ -58,12 +66,14 @@ class ZT
 {
     using vec = std::vector<T>;
 public:
- ZT( vec num=vec{1}, vec den=vec{1}, int descending=1 ) : p(den), q(num)
+ ZT( vec num=vec{1}, vec den=vec{1}, double t=1, int descending=1 ) : p(den), q(num),
+      sample_T(t)
     {
 
 	regs_out = vec(p.size(), 0);
 	regs_in = vec(q.size(), 0);
 
+	
 	if ( descending )
 	{
 	    std::reverse(p.begin(), p.end());
@@ -71,15 +81,17 @@ public:
 	}
 
 	//set the coefficient on y[k] to 1 to eliminate one multiply
+	//this has unintended consequences when either input or output are zero
 	if ( p[0] != 1 && p[0] != 0 )
 	{
-	    T temp = p[0];
-	    for ( int ii = 0; ii < p.size(); ii++ )
+	   T temp = p[0];
+	   for ( int ii = 0; ii < p.size(); ii++ )
 		p[ii] = p[ii]/temp;
-
-	    for ( int ii = 0; ii < q.size(); ii++ )
+	
+	  for ( int ii = 0; ii < q.size(); ii++ )
 		q[ii] = q[ii]/temp;
 	}
+	
     }	
     ZT( ZT<T> f, ZT<T> g )
     {
@@ -88,15 +100,25 @@ public:
 	regs_out = vec(p.size());
 	regs_in = vec(q.size());
     }
+    
+    //assume difference equations are given in the form
+    //
+    // a_n x[k-n] + a_n-1 k[k-n+1] + ... + a_0 x[k] = 0;
+    //
+    //then
+    //
+    //   s1 = Sum{ a_n x[k-n] + a_n-1 x[k-n+1] + ... + a_1 x [k-1];
+    // x[k] = -s1 (for a_0 = 1 ).
     inline T operator()( T x )
     {
+
 	regs_in[0] = x;
 
 	T s1 {};
 	T s2 {};
 	
 	for ( int i = 1;  i < regs_out.size(); i++ )
-	    s1 += ( 1 * regs_out[i] * p[i] );
+	    s1 += ( regs_out[i] * p[i] );
 
 	for ( int i = 0; i < regs_in.size(); i++ )
 	    s2 += ( regs_in[i] * q[i] );
@@ -154,12 +176,17 @@ public:
 	for ( auto x : p )
 	    std::cout << ' ' << x << ',';
 	std::cout << ")\n";
-    }	
+    }
+    inline double rate()
+    {
+	return sample_T;
+    }
 private:
     vec p;
     vec q;
     vec regs_out; //may want to use std::rotate to maintain regs
     vec regs_in;
+    double sample_T;
     vec expand( vec v, vec u )
     {
 	
@@ -189,6 +216,5 @@ std::vector<Token> odeint( ZT<Token> A, std::vector<Token>x, Token init, int fee
     }
     return vec;
 }
-
 
 #endif

@@ -39,6 +39,7 @@ void PyMem::free(void* data)
 	  if ( x->first == data )
 	  {
 	       queue.erase(x);
+	       length -= x->second;
 	       break;
 	  }
      }
